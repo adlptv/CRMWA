@@ -203,7 +203,7 @@ function Get-CodebaseContext {
     
     # Detect languages
     if (Test-Path "package.json") { $context.Languages += "JavaScript/TypeScript" }
-    if (Test-Path "requirements.txt" -or (Get-ChildItem -Filter "*.py" -ErrorAction SilentlyContinue)) { 
+    if ((Test-Path "requirements.txt") -or @(Get-ChildItem -Filter "*.py" -ErrorAction SilentlyContinue).Count -gt 0) { 
         $context.Languages += "Python" 
     }
     if (Get-ChildItem -Filter "*.go" -ErrorAction SilentlyContinue) { $context.Languages += "Go" }

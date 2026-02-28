@@ -376,10 +376,12 @@ Output in JSON array format:
     
     if ($result) {
         try {
-            # Try to parse JSON from result
-            $jsonMatch = [regex]::Match($result, "\[[\s\S]*\]")
+            # Try to parse JSON from result - look for array pattern
+            $jsonPattern = '(?s)\[\s*\{[\s\S]*?\}\s*\]'
+            $jsonMatch = [regex]::Match($result, $jsonPattern)
             if ($jsonMatch.Success) {
-                $ideas = @($jsonMatch.Value | ConvertFrom-Json)
+                $jsonStr = $jsonMatch.Value
+                $ideas = @($jsonStr | ConvertFrom-Json)
                 Write-Log "Generated $($ideas.Count) feature ideas" "SUCCESS"
                 return $ideas
             }
