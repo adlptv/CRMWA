@@ -246,6 +246,120 @@ function New-GitCommit {
     }
 }
 
+function Sync-GitPull {
+    param(
+        [string]$Branch = "ai-dev"
+    )
+    
+    # Check quota
+    $quota = Get-QuotaPercentage
+    if ($quota -lt 10) {
+        Write-Log "Quota critical ($quota%), skipping pull" "WARN"
+        return $false
+    }
+    
+    # Wait for commit lock
+    $waitCount = 0
+    while (Test-CommitLock -and $waitCount -lt 30) {
+        Start-Sleep -Seconds 1
+        $waitCount++
+    }
+    
+    if (Test-CommitLock) {
+        Write-Log "Commit lock held, skipping pull" "WARN"
+        return $false
+    }
+    
+    Set-CommitLock
+    
+    try {
+        # Fetch latest
+        git fetch origin
+        
+        # Check for remote branch
+        $remoteBranch = git branch -r --list "origin/$Branch"
+        if (-not $remoteBranch) {
+            Write-Log "Remote branch origin/$Branch not found, skipping pull" "WARN"
+            return $true
+        }
+        
+        # Stash any uncommitted changes
+        $hasChanges = git status --porcelain
+        if ($hasChanges) {
+            git stash push -m "Auto-stash before pull by $WORKER_NAME"
+            Write-Log "Stashed local changes before pull"
+        }
+        
+        # Pull with rebase
+        git pull --rebase origin $Branch
+        
+        # Pop stash if any
+        if ($hasChanges) {
+            git stash pop
+            Write-Log "Restored local changes after pull"
+        }
+        
+        Write-Log "Pulled latest from origin/$Branch" "SUCCESS"
+        return $true
+    } catch {
+        Write-Log "Pull failed: $_" "ERROR"
+        return $false
+    } finally {
+        Clear-CommitLock
+    }
+}
+
+function Sync-GitPush {
+    param(
+        [string]$Branch = "ai-dev"
+    )
+    
+    # Check quota
+    $quota = Get-QuotaPercentage
+    if ($quota -lt 10) {
+        Write-Log "Quota critical ($quota%), skipping push" "WARN"
+        return $false
+    }
+    
+    # Wait for commit lock
+    $waitCount = 0
+    while (Test-CommitLock -and $waitCount -lt 30) {
+        Start-Sleep -Seconds 1
+        $waitCount++
+    }
+    
+    if (Test-CommitLock) {
+        Write-Log "Commit lock held, skipping push" "WARN"
+        return $false
+    }
+    
+    Set-CommitLock
+    
+    try {
+        # Push to remote
+        git push origin $Branch 2>&1
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "Pushed to origin/$Branch" "SUCCESS"
+            return $true
+        } else {
+            # Try push with set-upstream if branch not tracked
+            git push -u origin $Branch 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Log "Pushed and set upstream for $Branch" "SUCCESS"
+                return $true
+            }
+            Write-Log "Push failed with exit code: $LASTEXITCODE" "ERROR"
+            return $false
+        }
+    } catch {
+        Write-Log "Push failed: $_" "ERROR"
+        return $false
+    } finally {
+        Clear-CommitLock
+    }
+}
+
 # =============================================================================
 # Main Worker Loop
 # =============================================================================
