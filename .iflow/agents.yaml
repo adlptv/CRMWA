@@ -1,0 +1,79 @@
+# iFlow Agents Configuration
+# ==========================
+
+version: "1.0"
+agents:
+  - name: bugfix-agent
+    model: glm-5
+    mode: thinking
+    description: "Automated bug detection and fixing agent"
+    capabilities:
+      - code-analysis
+      - bug-detection
+      - patch-generation
+      - test-verification
+    config:
+      max_tokens: 4096
+      temperature: 0.3
+      timeout: 300
+
+  - name: coverage-agent
+    model: glm-5
+    mode: thinking
+    description: "Test coverage analysis and improvement agent"
+    capabilities:
+      - coverage-analysis
+      - test-generation
+      - coverage-reporting
+    config:
+      max_tokens: 4096
+      temperature: 0.4
+      timeout: 300
+
+  - name: refactor-agent
+    model: glm-5
+    mode: thinking
+    description: "Code refactoring and optimization agent"
+    capabilities:
+      - code-refactoring
+      - optimization
+      - code-smell-detection
+    config:
+      max_tokens: 4096
+      temperature: 0.5
+      timeout: 300
+
+  - name: lint-agent
+    model: glm-5
+    mode: smart
+    description: "Code linting and style enforcement agent"
+    capabilities:
+      - linting
+      - style-checking
+      - auto-formatting
+    config:
+      max_tokens: 2048
+      temperature: 0.2
+      timeout: 180
+
+  - name: doc-agent
+    model: glm-5
+    mode: smart
+    description: "Documentation generation and maintenance agent"
+    capabilities:
+      - doc-generation
+      - doc-updating
+      - api-documentation
+    config:
+      max_tokens: 4096
+      temperature: 0.4
+      timeout: 300
+
+# Global Settings
+settings:
+  parallel_execution: true
+  max_concurrent_agents: 5
+  retry_on_failure: true
+  max_retries: 3
+  quota_monitoring: true
+  auto_restart: true

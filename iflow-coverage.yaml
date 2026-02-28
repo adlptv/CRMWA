@@ -1,0 +1,76 @@
+# iFlow Coverage Agent Configuration
+# ===================================
+
+agent:
+  name: coverage-agent
+  model: glm-5
+  mode: thinking
+  description: "Test coverage analysis and improvement agent using GLM-5 Thinking Mode"
+
+capabilities:
+  - coverage-analysis
+  - test-generation
+  - coverage-reporting
+  - gap-identification
+  - test-optimization
+
+execution:
+  max_tokens: 4096
+  temperature: 0.4
+  timeout_seconds: 300
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+workflow:
+  - step: analyze_coverage
+    description: "Analyze current test coverage"
+    tools:
+      - run_shell_command
+      - read_file
+    command_templates:
+      - "npm run coverage"
+      - "pytest --cov"
+      - "go test -cover"
+    output: "coverage_report"
+
+  - step: identify_gaps
+    description: "Identify coverage gaps"
+    analysis:
+      - uncovered_lines
+      - uncovered_branches
+      - uncovered_functions
+    threshold: 80
+    output: "coverage_gaps"
+
+  - step: generate_tests
+    description: "Generate tests for uncovered code"
+    tools:
+      - read_file
+      - write_file
+      - replace
+    output: "generated_tests"
+
+  - step: run_tests
+    description: "Run generated tests"
+    tools:
+      - run_shell_command
+    output: "test_results"
+
+  - step: verify_coverage
+    description: "Verify coverage improvement"
+    tools:
+      - run_shell_command
+    output: "new_coverage"
+
+safety:
+  check_shutdown_flag: true
+  check_commit_lock: true
+  check_quota_before_execution: true
+  max_tests_per_run: 20
+  min_coverage_threshold: 70
+  target_coverage: 90
+
+output:
+  log_file: "logs/coverage-agent.log"
+  report_file: "logs/coverage-report.json"
+  status_file: "logs/coverage-status.txt"

@@ -1,0 +1,86 @@
+# iFlow Documentation Agent Configuration
+# ========================================
+
+agent:
+  name: doc-agent
+  model: glm-5
+  mode: smart
+  description: "Documentation generation and maintenance agent using GLM-5 Smart Mode"
+
+capabilities:
+  - doc-generation
+  - doc-updating
+  - api-documentation
+  - readme-generation
+  - code-commenting
+
+execution:
+  max_tokens: 4096
+  temperature: 0.4
+  timeout_seconds: 300
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+workflow:
+  - step: analyze_codebase
+    description: "Analyze codebase structure for documentation"
+    tools:
+      - glob
+      - read_file
+      - search_file_content
+    targets:
+      - functions
+      - classes
+      - modules
+      - apis
+    output: "codebase_analysis"
+
+  - step: check_existing_docs
+    description: "Check existing documentation"
+    doc_files:
+      - "README.md"
+      - "docs/"
+      - "**/*.md"
+    output: "existing_docs"
+
+  - step: identify_gaps
+    description: "Identify documentation gaps"
+    checks:
+      - missing_readme
+      - missing_api_docs
+      - missing_inline_comments
+      - outdated_docs
+    output: "doc_gaps"
+
+  - step: generate_documentation
+    description: "Generate missing documentation"
+    tools:
+      - write_file
+      - replace
+    doc_types:
+      - readme
+      - api_reference
+      - code_comments
+      - usage_examples
+    output: "generated_docs"
+
+  - step: verify_documentation
+    description: "Verify documentation quality"
+    checks:
+      - completeness
+      - accuracy
+      - formatting
+    output: "verification_results"
+
+safety:
+  check_shutdown_flag: true
+  check_commit_lock: true
+  check_quota_before_execution: true
+  max_files_per_run: 10
+  preserve_existing_docs: true
+  require_formatting_check: true
+
+output:
+  log_file: "logs/doc-agent.log"
+  report_file: "logs/doc-report.json"
+  status_file: "logs/doc-status.txt"

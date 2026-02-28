@@ -1,0 +1,84 @@
+# iFlow Lint Agent Configuration
+# ===============================
+
+agent:
+  name: lint-agent
+  model: glm-5
+  mode: smart
+  description: "Code linting and style enforcement agent using GLM-5 Smart Mode"
+
+capabilities:
+  - linting
+  - style-checking
+  - auto-formatting
+  - convention-enforcement
+  - best-practices
+
+execution:
+  max_tokens: 2048
+  temperature: 0.2
+  timeout_seconds: 180
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+workflow:
+  - step: run_linter
+    description: "Run linter on codebase"
+    tools:
+      - run_shell_command
+    linters:
+      javascript:
+        - "eslint"
+        - "prettier --check"
+      python:
+        - "ruff check"
+        - "black --check"
+        - "mypy"
+      typescript:
+        - "eslint"
+        - "tsc --noEmit"
+      go:
+        - "golint"
+        - "go vet"
+    output: "lint_results"
+
+  - step: analyze_issues
+    description: "Analyze linting issues"
+    categories:
+      - error
+      - warning
+      - convention
+      - refactor
+    output: "lint_issues"
+
+  - step: auto_fix
+    description: "Auto-fix linting issues"
+    tools:
+      - replace
+      - run_shell_command
+    auto_fix_commands:
+      - "eslint --fix"
+      - "prettier --write"
+      - "ruff check --fix"
+      - "black"
+      - "go fmt"
+    output: "fixed_issues"
+
+  - step: verify_fixes
+    description: "Verify all issues resolved"
+    tools:
+      - run_shell_command
+    output: "verification_results"
+
+safety:
+  check_shutdown_flag: true
+  check_commit_lock: true
+  check_quota_before_execution: true
+  max_auto_fixes_per_run: 50
+  preserve_logic: true
+  require_tests_pass: false
+
+output:
+  log_file: "logs/lint-agent.log"
+  report_file: "logs/lint-report.json"
+  status_file: "logs/lint-status.txt"
