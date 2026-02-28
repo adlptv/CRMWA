@@ -104,7 +104,7 @@ function Test-HasDocumentation {
         '//\s*@param',         # JS @param comments
         '//\s*@returns',       # JS @returns comments
         '#\s*@param',          # Python param comments
-        '"""[^\n]*$',          # Incomplete docstrings
+        '"""[^\n]*$'           # Incomplete docstrings
     )
     
     foreach ($pattern in $docPatterns) {
