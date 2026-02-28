@@ -63,32 +63,52 @@ function Test-ShutdownFlag {
 }
 
 function Test-CommitLock {
-    if (-not (Test-Path $COMMIT_LOCK)) { return $false }
-    
-    # Check if lock is stale (process no longer exists)
-    $lockContent = Get-Content $COMMIT_LOCK -ErrorAction SilentlyContinue
-    if ($lockContent -match "PID=(\d+)") {
-        $lockPid = $matches[1]
-        $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
-        if (-not $process) {
-            # Lock is stale, clear it
-            Remove-Item $COMMIT_LOCK -Force -ErrorAction SilentlyContinue
-            return $false
+    try {
+        if (-not (Test-Path $COMMIT_LOCK)) { return $false }
+        
+        # Try to read with file share mode
+        $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+        if ($content -match "PID=(\d+)") {
+            $lockPid = $matches[1]
+            $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
+            if (-not $process) {
+                # Lock is stale, clear it
+                [System.IO.File]::Delete($COMMIT_LOCK)
+                return $false
+            }
         }
+        return $true
+    } catch {
+        # File is locked by another process, wait a bit
+        Start-Sleep -Milliseconds 100
+        return Test-Path $COMMIT_LOCK
     }
-    return $true
 }
 
 function Set-CommitLock {
-    "PID=$PID`nWORKER=$WORKER_NAME`nTIMESTAMP=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File -FilePath $COMMIT_LOCK
+    $retries = 0
+    while ($retries -lt 5) {
+        try {
+            $content = "PID=$PID`nWORKER=$WORKER_NAME`nTIMESTAMP=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+            [System.IO.File]::WriteAllText($COMMIT_LOCK, $content)
+            return
+        } catch {
+            $retries++
+            Start-Sleep -Milliseconds 200
+        }
+    }
 }
 
 function Clear-CommitLock {
-    if (Test-Path $COMMIT_LOCK) {
-        $lockContent = Get-Content $COMMIT_LOCK
-        if ($lockContent -match "PID=$PID") {
-            Remove-Item $COMMIT_LOCK -Force
+    try {
+        if (Test-Path $COMMIT_LOCK) {
+            $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+            if ($content -match "PID=$PID") {
+                [System.IO.File]::Delete($COMMIT_LOCK)
+            }
         }
+    } catch {
+        # Ignore errors when clearing lock
     }
 }
 
