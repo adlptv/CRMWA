@@ -336,15 +336,16 @@ function Sync-GitPush {
     Set-CommitLock
     
     try {
-        # Push to remote
-        git push origin $Branch 2>&1
+        # Push to remote (suppress stderr to avoid PowerShell errors)
+        $output = git push origin $Branch 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
         
-        if ($LASTEXITCODE -eq 0) {
+        if ($exitCode -eq 0) {
             Write-Log "Pushed to origin/$Branch" "SUCCESS"
             return $true
         } else {
             # Try push with set-upstream if branch not tracked
-            git push -u origin $Branch 2>&1
+            $output2 = git push -u origin $Branch 2>&1 | Out-String
             if ($LASTEXITCODE -eq 0) {
                 Write-Log "Pushed and set upstream for $Branch" "SUCCESS"
                 return $true
