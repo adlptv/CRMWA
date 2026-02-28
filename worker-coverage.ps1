@@ -318,6 +318,10 @@ function Invoke-WorkerLoop {
             continue
         }
         
+        # Pull latest changes
+        Write-Log "Pulling latest changes..."
+        Sync-GitPull
+        
         Update-Status "analyzing"
         
         # Run coverage analysis
@@ -349,7 +353,11 @@ function Invoke-WorkerLoop {
             }
         }
         
-        New-GitCommit -Message "Coverage improvements from iteration $iteration"
+        $committed = New-GitCommit -Message "Coverage improvements from iteration $iteration"
+        if ($committed) {
+            Write-Log "Pushing changes..."
+            Sync-GitPush
+        }
         
         Update-Status "waiting"
         Start-Sleep -Seconds $IterationDelay
