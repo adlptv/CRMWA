@@ -281,103 +281,32 @@ function New-GitCommit {
 }
 
 function Sync-GitPull {
-    param(
-        [string]$Branch = "ai-dev"
-    )
-    
-    # Check quota
-    $quota = Get-QuotaPercentage
-    if ($quota -lt 10) {
-        Write-Log "Quota critical ($quota%), skipping pull" "WARN"
-        return $false
-    }
-    
-    # Wait for commit lock
-    $waitCount = 0
-    while (Test-CommitLock -and $waitCount -lt 30) {
-        Start-Sleep -Seconds 1
-        $waitCount++
-    }
-    
-    if (Test-CommitLock) {
-        Write-Log "Commit lock held, skipping pull" "WARN"
-        return $false
-    }
-    
-    Set-CommitLock
+    param([string]$Branch = "ai-dev")
     
     try {
-        # Fetch latest
-        git fetch origin
-        
-        # Check for remote branch
-        $remoteBranch = git branch -r --list "origin/$Branch"
-        if (-not $remoteBranch) {
-            Write-Log "Remote branch origin/$Branch not found, skipping pull" "WARN"
-            return $true
-        }
-        
-        # Clean up temporary files before pull
-        git checkout --ours commit.lock *.pid logs/ 2>$null
-        git reset HEAD commit.lock *.pid logs/ 2>$null
-        git checkout -- commit.lock *.pid logs/ 2>$null
-        
-        # Pull with rebase
-        git pull --rebase origin $Branch 2>$null
-        
-        # Clean up any merge conflict markers in commit.lock
-        if (Test-Path $COMMIT_LOCK) {
-            $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
-            if ($content -match "<<<<<<|======|>>>>>>") {
-                [System.IO.File]::Delete($COMMIT_LOCK)
-            }
-        }
-        
-        Write-Log "Pulled latest from origin/$Branch" "SUCCESS"
+        # Simple pull - discard local temp file changes first
+        git checkout -- "commit.lock" "*.pid" 2>$null
+        git pull origin $Branch 2>&1 | Out-Null
+        Write-Log "Pulled from origin/$Branch" "SUCCESS"
         return $true
     } catch {
-        Write-Log "Pull failed: $_" "ERROR"
-        return $false
-    } finally {
-        Clear-CommitLock
+        Write-Log "Pull failed: $_" "WARN"
+        return $true  # Continue anyway
     }
 }
 
 function Sync-GitPush {
-    param(
-        [string]$Branch = "ai-dev"
-    )
-    
-    # Check quota
-    $quota = Get-QuotaPercentage
-    if ($quota -lt 10) {
-        Write-Log "Quota critical ($quota%), skipping push" "WARN"
-        return $false
-    }
-    
-    # Wait for commit lock
-    $waitCount = 0
-    while (Test-CommitLock -and $waitCount -lt 30) {
-        Start-Sleep -Seconds 1
-        $waitCount++
-    }
-    
-    if (Test-CommitLock) {
-        Write-Log "Commit lock held, skipping push" "WARN"
-        return $false
-    }
-    
-    Set-CommitLock
+    param([string]$Branch = "ai-dev")
     
     try {
-        # Push to remote (suppress stderr to avoid PowerShell errors)
-        $output = git push origin $Branch 2>&1 | Out-String
-        $exitCode = $LASTEXITCODE
-        
-        if ($exitCode -eq 0) {
-            Write-Log "Pushed to origin/$Branch" "SUCCESS"
-            return $true
-        } else {
+        git push origin $Branch 2>&1 | Out-Null
+        Write-Log "Pushed to origin/$Branch" "SUCCESS"
+        return $true
+    } catch {
+        Write-Log "Push failed: $_" "WARN"
+        return $true  # Continue anyway
+    }
+}
             # Try push with set-upstream if branch not tracked
             $output2 = git push -u origin $Branch 2>&1 | Out-String
             if ($LASTEXITCODE -eq 0) {

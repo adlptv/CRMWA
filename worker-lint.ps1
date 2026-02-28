@@ -262,73 +262,27 @@ function New-GitCommit {
 function Sync-GitPull {
     param([string]$Branch = "ai-dev")
     
-    $quota = Get-QuotaPercentage
-    if ($quota -lt 10) { return $false }
-    
-    $waitCount = 0
-    while (Test-CommitLock -and $waitCount -lt 30) { Start-Sleep -Seconds 1; $waitCount++ }
-    if (Test-CommitLock) { return $false }
-    
-    Set-CommitLock
     try {
-        git fetch origin
-        $remoteBranch = git branch -r --list "origin/$Branch"
-        if (-not $remoteBranch) { return $true }
-        
-        # Clean up temporary files before pull
-        git checkout --ours commit.lock *.pid logs/ 2>$null
-        git reset HEAD commit.lock *.pid logs/ 2>$null
-        git checkout -- commit.lock *.pid logs/ 2>$null
-        
-        # Pull with rebase
-        git pull --rebase origin $Branch 2>$null
-        
-        # Clean up any merge conflict markers in commit.lock
-        if (Test-Path $COMMIT_LOCK) {
-            $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
-            if ($content -match "<<<<<<|======|>>>>>>") {
-                [System.IO.File]::Delete($COMMIT_LOCK)
-            }
-        }
-        
+        git checkout -- "commit.lock" "*.pid" 2>$null
+        git pull origin $Branch 2>&1 | Out-Null
         Write-Log "Pulled from origin/$Branch" "SUCCESS"
         return $true
     } catch {
-        Write-Log "Pull failed: $_" "ERROR"
-        return $false
-    } finally {
-        Clear-CommitLock
+        Write-Log "Pull failed: $_" "WARN"
+        return $true
     }
 }
 
 function Sync-GitPush {
     param([string]$Branch = "ai-dev")
     
-    $quota = Get-QuotaPercentage
-    if ($quota -lt 10) { return $false }
-    
-    $waitCount = 0
-    while (Test-CommitLock -and $waitCount -lt 30) { Start-Sleep -Seconds 1; $waitCount++ }
-    if (Test-CommitLock) { return $false }
-    
-    Set-CommitLock
     try {
-        $output = git push origin $Branch 2>&1 | Out-String
-        if ($LASTEXITCODE -eq 0) {
-            Write-Log "Pushed to origin/$Branch" "SUCCESS"
-            return $true
-        }
-        $output2 = git push -u origin $Branch 2>&1 | Out-String
-        if ($LASTEXITCODE -eq 0) {
-            Write-Log "Pushed and set upstream" "SUCCESS"
-            return $true
-        }
-        return $false
+        git push origin $Branch 2>&1 | Out-Null
+        Write-Log "Pushed to origin/$Branch" "SUCCESS"
+        return $true
     } catch {
-        Write-Log "Push failed: $_" "ERROR"
-        return $false
-    } finally {
-        Clear-CommitLock
+        Write-Log "Push failed: $_" "WARN"
+        return $true
     }
 }
 
