@@ -68,6 +68,7 @@ function Test-CommitLock {
         
         # Try to read with file share mode
         $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+        $matches = @{}  # Initialize matches
         if ($content -match "PID=(\d+)") {
             $lockPid = $matches[1]
             $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
