@@ -1,0 +1,67 @@
+# iFlow Bugfix Agent Configuration
+# =================================
+
+agent:
+  name: bugfix-agent
+  model: glm-5
+  mode: thinking
+  description: "Automated bug detection and fixing agent using GLM-5 Thinking Mode"
+
+capabilities:
+  - code-analysis
+  - bug-detection
+  - patch-generation
+  - test-verification
+  - error-analysis
+  - stack-trace-parsing
+
+execution:
+  max_tokens: 4096
+  temperature: 0.3
+  timeout_seconds: 300
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+workflow:
+  - step: analyze_codebase
+    description: "Scan codebase for potential bugs"
+    tools:
+      - search_file_content
+      - glob
+      - read_file
+    output: "bug_analysis_report"
+
+  - step: detect_issues
+    description: "Identify specific bug patterns"
+    patterns:
+      - null_pointer
+      - memory_leak
+      - race_condition
+      - type_error
+      - logic_error
+    output: "detected_bugs"
+
+  - step: generate_patches
+    description: "Create fix patches for detected bugs"
+    tools:
+      - replace
+      - write_file
+    output: "patch_list"
+
+  - step: verify_fixes
+    description: "Run tests to verify bug fixes"
+    tools:
+      - run_shell_command
+    output: "verification_results"
+
+safety:
+  check_shutdown_flag: true
+  check_commit_lock: true
+  check_quota_before_execution: true
+  max_changes_per_run: 10
+  require_test_pass: true
+
+output:
+  log_file: "logs/bugfix-agent.log"
+  report_file: "logs/bugfix-report.json"
+  status_file: "logs/bugfix-status.txt"

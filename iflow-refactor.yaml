@@ -1,0 +1,81 @@
+# iFlow Refactor Agent Configuration
+# ===================================
+
+agent:
+  name: refactor-agent
+  model: glm-5
+  mode: thinking
+  description: "Code refactoring and optimization agent using GLM-5 Thinking Mode"
+
+capabilities:
+  - code-refactoring
+  - optimization
+  - code-smell-detection
+  - design-pattern-application
+  - complexity-reduction
+
+execution:
+  max_tokens: 4096
+  temperature: 0.5
+  timeout_seconds: 300
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+workflow:
+  - step: analyze_code_structure
+    description: "Analyze code structure and complexity"
+    tools:
+      - search_file_content
+      - glob
+      - read_file
+    metrics:
+      - cyclomatic_complexity
+      - cognitive_complexity
+      - lines_of_code
+      - coupling
+    output: "structure_analysis"
+
+  - step: detect_code_smells
+    description: "Detect code smells and anti-patterns"
+    patterns:
+      - long_method
+      - large_class
+      - duplicate_code
+      - dead_code
+      - feature_envy
+      - god_object
+    output: "code_smells"
+
+  - step: plan_refactoring
+    description: "Plan refactoring operations"
+    considerations:
+      - preserve_behavior
+      - minimize_changes
+      - maintain_tests
+    output: "refactor_plan"
+
+  - step: apply_refactoring
+    description: "Apply refactoring changes"
+    tools:
+      - replace
+      - write_file
+    output: "applied_changes"
+
+  - step: verify_refactoring
+    description: "Verify refactoring preserved behavior"
+    tools:
+      - run_shell_command
+    output: "verification_results"
+
+safety:
+  check_shutdown_flag: true
+  check_commit_lock: true
+  check_quota_before_execution: true
+  max_files_per_run: 5
+  require_tests_pass: true
+  preserve_functionality: true
+
+output:
+  log_file: "logs/refactor-agent.log"
+  report_file: "logs/refactor-report.json"
+  status_file: "logs/refactor-status.txt"
