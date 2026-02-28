@@ -390,6 +390,10 @@ function Invoke-WorkerLoop {
             continue
         }
         
+        # Pull latest changes from remote
+        Write-Log "Pulling latest changes from remote..."
+        Sync-GitPull
+        
         # Update heartbeat
         Update-Status "analyzing"
         
@@ -424,7 +428,13 @@ Please provide a detailed fix for each issue.
             }
             
             # Commit changes
-            New-GitCommit -Message "Bug fixes from analysis iteration $iteration"
+            $committed = New-GitCommit -Message "Bug fixes from analysis iteration $iteration"
+            
+            # Push changes to remote after commit
+            if ($committed) {
+                Write-Log "Pushing changes to remote..."
+                Sync-GitPush
+            }
         }
         
         Update-Status "waiting"
