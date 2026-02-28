@@ -155,7 +155,7 @@ function Get-ProjectStructure {
 function Get-CodebaseContext {
     $context = @{
         Structure = Get-ProjectStructure
-        FileCount = (Find-SourceFiles).Count
+        FileCount = @(Find-SourceFiles).Count
         Languages = @()
     }
     
