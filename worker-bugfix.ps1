@@ -63,7 +63,20 @@ function Test-ShutdownFlag {
 }
 
 function Test-CommitLock {
-    return Test-Path $COMMIT_LOCK
+    if (-not (Test-Path $COMMIT_LOCK)) { return $false }
+    
+    # Check if lock is stale (process no longer exists)
+    $lockContent = Get-Content $COMMIT_LOCK -ErrorAction SilentlyContinue
+    if ($lockContent -match "PID=(\d+)") {
+        $lockPid = $matches[1]
+        $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
+        if (-not $process) {
+            # Lock is stale, clear it
+            Remove-Item $COMMIT_LOCK -Force -ErrorAction SilentlyContinue
+            return $false
+        }
+    }
+    return $true
 }
 
 function Set-CommitLock {
