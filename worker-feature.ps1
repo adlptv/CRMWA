@@ -46,7 +46,19 @@ function Write-Log {
 function Save-Pid { $PID | Out-File -FilePath $WORKER_PID }
 function Update-Status { param([string]$Status); $Status | Out-File -FilePath $WORKER_STATUS }
 function Test-ShutdownFlag { return Test-Path $SHUTDOWN_FLAG }
-function Test-CommitLock { return Test-Path $COMMIT_LOCK }
+function Test-CommitLock {
+    if (-not (Test-Path $COMMIT_LOCK)) { return $false }
+    $lockContent = Get-Content $COMMIT_LOCK -ErrorAction SilentlyContinue
+    if ($lockContent -match "PID=(\d+)") {
+        $lockPid = $matches[1]
+        $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
+        if (-not $process) {
+            Remove-Item $COMMIT_LOCK -Force -ErrorAction SilentlyContinue
+            return $false
+        }
+    }
+    return $true
+}
 
 function Set-CommitLock {
     "PID=$PID`nWORKER=$WORKER_NAME`nTIMESTAMP=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File -FilePath $COMMIT_LOCK
