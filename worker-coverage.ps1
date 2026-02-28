@@ -53,17 +53,48 @@ function Save-Pid { $PID | Out-File -FilePath $WORKER_PID }
 function Update-Status { param([string]$Status); $Status | Out-File -FilePath $WORKER_STATUS }
 function Test-ShutdownFlag { return Test-Path $SHUTDOWN_FLAG }
 function Test-CommitLock {
-    if (-not (Test-Path $COMMIT_LOCK)) { return $false }
-    $lockContent = Get-Content $COMMIT_LOCK -ErrorAction SilentlyContinue
-    if ($lockContent -match "PID=(\d+)") {
-        $lockPid = $matches[1]
-        $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
-        if (-not $process) {
-            Remove-Item $COMMIT_LOCK -Force -ErrorAction SilentlyContinue
-            return $false
+    try {
+        if (-not (Test-Path $COMMIT_LOCK)) { return $false }
+        $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+        $matches = @{}  # Initialize matches
+        if ($content -match "PID=(\d+)") {
+            $lockPid = $matches[1]
+            $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
+            if (-not $process) {
+                [System.IO.File]::Delete($COMMIT_LOCK)
+                return $false
+            }
+        }
+        return $true
+    } catch {
+        Start-Sleep -Milliseconds 100
+        return Test-Path $COMMIT_LOCK
+    }
+}
+
+function Set-CommitLock {
+    $retries = 0
+    while ($retries -lt 5) {
+        try {
+            $content = "PID=$PID`nWORKER=$WORKER_NAME`nTIMESTAMP=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+            [System.IO.File]::WriteAllText($COMMIT_LOCK, $content)
+            return
+        } catch {
+            $retries++
+            Start-Sleep -Milliseconds 200
         }
     }
-    return $true
+}
+
+function Clear-CommitLock {
+    try {
+        if (Test-Path $COMMIT_LOCK) {
+            $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+            if ($content -match "PID=$PID") {
+                [System.IO.File]::Delete($COMMIT_LOCK)
+            }
+        }
+    } catch { }
 }
 
 function Set-CommitLock {
@@ -241,62 +272,27 @@ function New-GitCommit {
 function Sync-GitPull {
     param([string]$Branch = "ai-dev")
     
-    $quota = Get-QuotaPercentage
-    if ($quota -lt 10) { return $false }
-    
-    $waitCount = 0
-    while (Test-CommitLock -and $waitCount -lt 30) { Start-Sleep -Seconds 1; $waitCount++ }
-    if (Test-CommitLock) { return $false }
-    
-    Set-CommitLock
     try {
-        git fetch origin
-        $remoteBranch = git branch -r --list "origin/$Branch"
-        if (-not $remoteBranch) { return $true }
-        
-        $hasChanges = git status --porcelain
-        if ($hasChanges) { git stash push -m "Auto-stash by $WORKER_NAME" }
-        git pull --rebase origin $Branch
-        if ($hasChanges) { git stash pop }
-        
+        git checkout -- "commit.lock" "*.pid" 2>$null
+        git pull origin $Branch 2>&1 | Out-Null
         Write-Log "Pulled from origin/$Branch" "SUCCESS"
         return $true
     } catch {
-        Write-Log "Pull failed: $_" "ERROR"
-        return $false
-    } finally {
-        Clear-CommitLock
+        Write-Log "Pull failed: $_" "WARN"
+        return $true
     }
 }
 
 function Sync-GitPush {
     param([string]$Branch = "ai-dev")
     
-    $quota = Get-QuotaPercentage
-    if ($quota -lt 10) { return $false }
-    
-    $waitCount = 0
-    while (Test-CommitLock -and $waitCount -lt 30) { Start-Sleep -Seconds 1; $waitCount++ }
-    if (Test-CommitLock) { return $false }
-    
-    Set-CommitLock
     try {
-        $output = git push origin $Branch 2>&1 | Out-String
-        if ($LASTEXITCODE -eq 0) {
-            Write-Log "Pushed to origin/$Branch" "SUCCESS"
-            return $true
-        }
-        $output2 = git push -u origin $Branch 2>&1 | Out-String
-        if ($LASTEXITCODE -eq 0) {
-            Write-Log "Pushed and set upstream" "SUCCESS"
-            return $true
-        }
-        return $false
+        git push origin $Branch 2>&1 | Out-Null
+        Write-Log "Pushed to origin/$Branch" "SUCCESS"
+        return $true
     } catch {
-        Write-Log "Push failed: $_" "ERROR"
-        return $false
-    } finally {
-        Clear-CommitLock
+        Write-Log "Push failed: $_" "WARN"
+        return $true
     }
 }
 

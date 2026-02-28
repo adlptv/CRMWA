@@ -46,7 +46,50 @@ function Write-Log {
 function Save-Pid { $PID | Out-File -FilePath $WORKER_PID }
 function Update-Status { param([string]$Status); $Status | Out-File -FilePath $WORKER_STATUS }
 function Test-ShutdownFlag { return Test-Path $SHUTDOWN_FLAG }
-function Test-CommitLock { return Test-Path $COMMIT_LOCK }
+function Test-CommitLock {
+    try {
+        if (-not (Test-Path $COMMIT_LOCK)) { return $false }
+        $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+        $matches = @{}  # Initialize matches
+        if ($content -match "PID=(\d+)") {
+            $lockPid = $matches[1]
+            $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
+            if (-not $process) {
+                [System.IO.File]::Delete($COMMIT_LOCK)
+                return $false
+            }
+        }
+        return $true
+    } catch {
+        Start-Sleep -Milliseconds 100
+        return Test-Path $COMMIT_LOCK
+    }
+}
+
+function Set-CommitLock {
+    $retries = 0
+    while ($retries -lt 5) {
+        try {
+            $content = "PID=$PID`nWORKER=$WORKER_NAME`nTIMESTAMP=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+            [System.IO.File]::WriteAllText($COMMIT_LOCK, $content)
+            return
+        } catch {
+            $retries++
+            Start-Sleep -Milliseconds 200
+        }
+    }
+}
+
+function Clear-CommitLock {
+    try {
+        if (Test-Path $COMMIT_LOCK) {
+            $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+            if ($content -match "PID=$PID") {
+                [System.IO.File]::Delete($COMMIT_LOCK)
+            }
+        }
+    } catch { }
+}
 
 function Set-CommitLock {
     "PID=$PID`nWORKER=$WORKER_NAME`nTIMESTAMP=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File -FilePath $COMMIT_LOCK
@@ -334,10 +377,12 @@ Output in JSON array format:
     
     if ($result) {
         try {
-            # Try to parse JSON from result
-            $jsonMatch = [regex]::Match($result, "\[[\s\S]*\]")
+            # Try to parse JSON from result - look for array pattern
+            $jsonPattern = '(?s)\[\s*\{[\s\S]*?\}\s*\]'
+            $jsonMatch = [regex]::Match($result, $jsonPattern)
             if ($jsonMatch.Success) {
-                $ideas = @($jsonMatch.Value | ConvertFrom-Json)
+                $jsonStr = $jsonMatch.Value
+                $ideas = @($jsonStr | ConvertFrom-Json)
                 Write-Log "Generated $($ideas.Count) feature ideas" "SUCCESS"
                 return $ideas
             }
