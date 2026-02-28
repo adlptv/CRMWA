@@ -56,6 +56,7 @@ function Test-CommitLock {
     try {
         if (-not (Test-Path $COMMIT_LOCK)) { return $false }
         $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+        $matches = @{}  # Initialize matches
         if ($content -match "PID=(\d+)") {
             $lockPid = $matches[1]
             $process = Get-Process -Id $lockPid -ErrorAction SilentlyContinue
