@@ -413,7 +413,7 @@ function Invoke-WorkerLoop {
         }
         
         # Check current queue size
-        $queue = Get-FeatureQueue
+        $queue = @(Get-FeatureQueue)
         Write-Log "Current feature queue: $($queue.Count) items"
         
         # Only generate new ideas if queue is small
@@ -421,7 +421,7 @@ function Invoke-WorkerLoop {
             Update-Status "brainstorming"
             Write-Log "Generating new feature ideas..."
             
-            $ideas = New-FeatureIdeas
+            $ideas = @(New-FeatureIdeas)
             
             if ($ideas -and $ideas.Count -gt 0) {
                 Add-IdeasToQueue -Ideas $ideas

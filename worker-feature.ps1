@@ -101,13 +101,13 @@ function Save-CompletedFeature {
 }
 
 function Get-NextFeature {
-    $queue = Get-FeatureQueue
+    $queue = @(Get-FeatureQueue)
     if ($queue.Count -eq 0) { return $null }
     return $queue[0]
 }
 
 function Remove-FeatureFromQueue {
-    $queue = Get-FeatureQueue
+    $queue = @(Get-FeatureQueue)
     if ($queue.Count -gt 0) {
         $queue = $queue | Select-Object -Skip 1
         Save-FeatureQueue -Queue $queue
