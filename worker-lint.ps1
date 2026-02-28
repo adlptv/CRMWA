@@ -216,6 +216,68 @@ function New-GitCommit {
     }
 }
 
+function Sync-GitPull {
+    param([string]$Branch = "ai-dev")
+    
+    $quota = Get-QuotaPercentage
+    if ($quota -lt 10) { return $false }
+    
+    $waitCount = 0
+    while (Test-CommitLock -and $waitCount -lt 30) { Start-Sleep -Seconds 1; $waitCount++ }
+    if (Test-CommitLock) { return $false }
+    
+    Set-CommitLock
+    try {
+        git fetch origin
+        $remoteBranch = git branch -r --list "origin/$Branch"
+        if (-not $remoteBranch) { return $true }
+        
+        $hasChanges = git status --porcelain
+        if ($hasChanges) { git stash push -m "Auto-stash by $WORKER_NAME" }
+        git pull --rebase origin $Branch
+        if ($hasChanges) { git stash pop }
+        
+        Write-Log "Pulled from origin/$Branch" "SUCCESS"
+        return $true
+    } catch {
+        Write-Log "Pull failed: $_" "ERROR"
+        return $false
+    } finally {
+        Clear-CommitLock
+    }
+}
+
+function Sync-GitPush {
+    param([string]$Branch = "ai-dev")
+    
+    $quota = Get-QuotaPercentage
+    if ($quota -lt 10) { return $false }
+    
+    $waitCount = 0
+    while (Test-CommitLock -and $waitCount -lt 30) { Start-Sleep -Seconds 1; $waitCount++ }
+    if (Test-CommitLock) { return $false }
+    
+    Set-CommitLock
+    try {
+        git push origin $Branch 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "Pushed to origin/$Branch" "SUCCESS"
+            return $true
+        }
+        git push -u origin $Branch 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "Pushed and set upstream" "SUCCESS"
+            return $true
+        }
+        return $false
+    } catch {
+        Write-Log "Push failed: $_" "ERROR"
+        return $false
+    } finally {
+        Clear-CommitLock
+    }
+}
+
 # =============================================================================
 # Main Worker Loop
 # =============================================================================
@@ -246,6 +308,10 @@ function Invoke-WorkerLoop {
             continue
         }
         
+        # Pull latest changes
+        Write-Log "Pulling latest changes..."
+        Sync-GitPull
+        
         Update-Status "checking"
         
         # Run linter check
@@ -264,7 +330,11 @@ function Invoke-WorkerLoop {
             $verifyResult = Invoke-Linter -ProjectType $projectType
             Write-Log "After fix: $($verifyResult.ErrorCount) issues remaining"
             
-            New-GitCommit -Message "Lint fixes from iteration $iteration"
+            $committed = New-GitCommit -Message "Lint fixes from iteration $iteration"
+            if ($committed) {
+                Write-Log "Pushing changes..."
+                Sync-GitPush
+            }
         }
         
         Update-Status "waiting"
