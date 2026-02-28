@@ -34,7 +34,7 @@ $MAX_RESTART_ATTEMPTS = 3
 $RESTART_WINDOW_MINUTES = 10
 
 # Workers
-$WORKERS = @("bugfix", "coverage", "refactor", "lint", "doc")
+$WORKERS = @("bugfix", "coverage", "refactor", "lint", "doc", "feature", "ideate")
 
 # =============================================================================
 # Logging Functions

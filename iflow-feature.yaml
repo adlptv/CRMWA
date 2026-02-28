@@ -1,0 +1,33 @@
+agent:
+  name: "feature-worker"
+  type: "feature"
+  mode: "smart"
+  
+context:
+  max_tokens: 8000
+  include_files: true
+  include_structure: true
+  
+feature:
+  implementation:
+    style: "clean-code"
+    patterns: ["solid", "dry", "kiss"]
+    testing: true
+    documentation: true
+    
+  priorities:
+    - name: "high"
+      weight: 3
+    - name: "medium"
+      weight: 2
+    - name: "low"
+      weight: 1
+      
+output:
+  format: "code"
+  include_tests: true
+  include_docs: true
+  
+logging:
+  level: "info"
+  file: "logs/worker-feature.log"

@@ -1,0 +1,47 @@
+agent:
+  name: "ideate-worker"
+  type: "ideate"
+  mode: "thinking"
+  
+context:
+  max_tokens: 10000
+  analyze_depth: "deep"
+  include_patterns: true
+  
+ideation:
+  sources:
+    - todos: true
+    - feature_gaps: true
+    - code_patterns: true
+    - user_feedback: true
+    
+  categories:
+    - "enhancement"
+    - "new-feature"
+    - "optimization"
+    - "integration"
+    - "ux"
+    - "security"
+    - "performance"
+    
+  creativity:
+    level: "high"
+    constraints:
+      - "must_be_implementable"
+      - "must_add_value"
+      - "must_align_with_project"
+      
+  output:
+    format: "json"
+    features_per_session: 3
+    include_rationale: true
+    include_effort_estimate: true
+    
+filtering:
+  duplicate_check: true
+  relevance_threshold: 0.7
+  max_queue_size: 10
+  
+logging:
+  level: "info"
+  file: "logs/worker-ideate.log"
