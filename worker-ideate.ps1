@@ -337,7 +337,7 @@ Output in JSON array format:
             # Try to parse JSON from result
             $jsonMatch = [regex]::Match($result, "\[[\s\S]*\]")
             if ($jsonMatch.Success) {
-                $ideas = $jsonMatch.Value | ConvertFrom-Json
+                $ideas = @($jsonMatch.Value | ConvertFrom-Json)
                 Write-Log "Generated $($ideas.Count) feature ideas" "SUCCESS"
                 return $ideas
             }
