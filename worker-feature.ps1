@@ -259,8 +259,9 @@ Category: $($Feature.Category)
 CODEBASE CONTEXT:
 Languages: $($context.Languages -join ', ')
 Total Files: $($context.FileCount)
-Directories: $($context.Directories -join ', ')
-Main Files: $($context.MainFiles -join ', ')
+Directories: $($context.Structure.Directories -join ', ')
+Main Files: $($context.Structure.MainFiles -join ', ')
+Config Files: $($context.Structure.ConfigFiles -join ', ')
 
 REQUIREMENTS:
 1. Analyze the existing codebase structure

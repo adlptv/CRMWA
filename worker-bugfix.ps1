@@ -304,23 +304,7 @@ function Sync-GitPush {
         return $true
     } catch {
         Write-Log "Push failed: $_" "WARN"
-        return $true  # Continue anyway
-    }
-}
-            # Try push with set-upstream if branch not tracked
-            $output2 = git push -u origin $Branch 2>&1 | Out-String
-            if ($LASTEXITCODE -eq 0) {
-                Write-Log "Pushed and set upstream for $Branch" "SUCCESS"
-                return $true
-            }
-            Write-Log "Push failed with exit code: $LASTEXITCODE" "ERROR"
-            return $false
-        }
-    } catch {
-        Write-Log "Push failed: $_" "ERROR"
-        return $false
-    } finally {
-        Clear-CommitLock
+        return $true
     }
 }
 
