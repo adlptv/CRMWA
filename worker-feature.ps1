@@ -331,10 +331,21 @@ function Sync-GitPull {
         $remoteBranch = git branch -r --list "origin/$Branch"
         if (-not $remoteBranch) { return $true }
         
-        $hasChanges = git status --porcelain
-        if ($hasChanges) { git stash push -m "Auto-stash by $WORKER_NAME" }
-        git pull --rebase origin $Branch
-        if ($hasChanges) { git stash pop }
+        # Clean up temporary files before pull
+        git checkout --ours commit.lock *.pid logs/ 2>$null
+        git reset HEAD commit.lock *.pid logs/ 2>$null
+        git checkout -- commit.lock *.pid logs/ 2>$null
+        
+        # Pull with rebase
+        git pull --rebase origin $Branch 2>$null
+        
+        # Clean up any merge conflict markers in commit.lock
+        if (Test-Path $COMMIT_LOCK) {
+            $content = [System.IO.File]::ReadAllText($COMMIT_LOCK)
+            if ($content -match "<<<<<<|======|>>>>>>") {
+                [System.IO.File]::Delete($COMMIT_LOCK)
+            }
+        }
         
         Write-Log "Pulled from origin/$Branch" "SUCCESS"
         return $true
