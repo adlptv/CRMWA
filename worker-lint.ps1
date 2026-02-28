@@ -259,12 +259,12 @@ function Sync-GitPush {
     
     Set-CommitLock
     try {
-        git push origin $Branch 2>&1
+        $output = git push origin $Branch 2>&1 | Out-String
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Pushed to origin/$Branch" "SUCCESS"
             return $true
         }
-        git push -u origin $Branch 2>&1
+        $output2 = git push -u origin $Branch 2>&1 | Out-String
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Pushed and set upstream" "SUCCESS"
             return $true
