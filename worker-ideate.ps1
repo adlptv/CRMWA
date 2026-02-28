@@ -275,9 +275,9 @@ function New-FeatureIdeas {
     
     # Gather context
     $projectInfo = Get-ProjectInfo
-    $todos = Find-TODOs
-    $gaps = Find-FeatureGaps
-    $recentChanges = Get-RecentChanges
+    $todos = @(Find-TODOs)
+    $gaps = @(Find-FeatureGaps)
+    $recentChanges = @(Get-RecentChanges)
     
     Write-Log "Found $($todos.Count) TODOs and $($gaps.Count) feature gaps"
     
